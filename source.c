@@ -6,39 +6,34 @@
 
 #define BUFFER_SIZE 4096
 
+void filter_comments(const char *filecontent);
+
 int get_linecount(FILE *fp) {
   rewind(fp);
   int ch, prev_ch = EOF, last_ch = EOF;
   bool inQuote = false, inChar = false, inComment = false, escaped = false;
   int lines = 0;
   bool file_empty = true;
-
   while ((ch = fgetc(fp)) != EOF) {
     file_empty = false;
-
     if (!inQuote && !inChar && prev_ch == '/' && ch == '/') {
       inComment = true;
     }
-
     if (ch == '\n') {
       inComment = false;
       inChar = false;
     }
-
     if ((inQuote || inChar) && prev_ch == '\\' && !escaped) {
       escaped = true;
     } else {
       escaped = false;
     }
-
     if (ch == '\'' && !inQuote && !inComment && !escaped) {
       inChar = !inChar;
     }
-
     if (ch == '"' && !inChar && !inComment && !escaped) {
       inQuote = !inQuote;
     }
-
     if (!inQuote && ch == '\n') {
       lines++;
     }
@@ -118,17 +113,19 @@ char *get_range_content(FILE *fp, int start, int end) {
   return buffer;
 }
 
-int main(void) {
-  const char *filename = "source.c";
+int main(void) { // comment
+  // comment
+  const char *filename = "test.c";
   FILE *fp = fopen(filename, "r");
   if (!fp) {
     perror("Error opening file");
     return -1;
   }
+  // comment
   int lines = get_linecount(fp);
 
-  int start = 122;
-  int end = 150;
+  int start = 1;
+  int end = 49;
 
   if (start < 1 || end > lines || start > end) {
     fprintf(stderr, "Invalid range [%d to %d] for file with %d lines\n", start,
@@ -143,8 +140,27 @@ int main(void) {
     return -1;
   }
 
-  printf("%s\n", line_content);
+  filter_comments(line_content);
   free(line_content);
   fclose(fp);
   return 0;
+}
+
+void filter_comments(const char *filecontent) {
+  int i = 0;
+  bool in_comment = false;
+  while (filecontent[i] != '\0') {
+    if (!in_comment && filecontent[i] == '/' && filecontent[i + 1] == '/') {
+      in_comment = true;
+      i += 2;
+      continue;
+    }
+    if (in_comment && filecontent[i] == '\n') {
+      in_comment = false;
+    }
+    if (!in_comment) {
+      putchar(filecontent[i]);
+    }
+    i++;
+  }
 }
