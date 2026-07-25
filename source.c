@@ -1,19 +1,14 @@
-#include <errno.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 #define BUFFER_SIZE 4096
 
 void filter_comments(const char *filecontent);
-int get_linecount(FILE *fp);
-char *get_range_content(FILE *fp,int start,int end);
 void printusage();
 
-
-int main(int argc,char **argv) { 
-  if(argc < 2 || argc > 4){
+int main(int argc, char **argv) {
+  if (argc < 2 || argc > 4) {
     printusage();
     return 1;
   }
@@ -23,156 +18,118 @@ int main(int argc,char **argv) {
     perror("Error opening file");
     return -1;
   }
-  int lines = get_linecount(fp);
-  
-  int start = argc > 2 ? atoi(argv[2]) : 1;
-  int end = argc > 3 ? atoi(argv[3]) : lines;
-  
-  
-  if (start < 1 || end > lines || start > end) {
-    fprintf(stderr, "Invalid range [%d to %d] for file with %d lines\n", start,
-            end, lines);
-            return -1;
-  }
 
-  char *line_content = get_range_content(fp, start, end);
-  if (!line_content) {
-    fprintf(stderr, "No content found\n");
+  fseek(fp, 0, SEEK_END);
+  long fsize = ftell(fp);
+  fseek(fp, 0, SEEK_SET);
+
+  char *content = malloc(fsize + 1);
+  if (!content) {
+    perror("Memory alloc failed");
     fclose(fp);
-    return -1;
+    return 1;
   }
 
-  filter_comments(line_content);
-  free(line_content);
+  size_t nread = fread(content,1,fsize,fp);
   fclose(fp);
-  return 0;
-}
 
-void filter_comments(const char *filecontent) {
-  int i = 0;
-  bool in_comment = false;
-  int inMultiLineComment = false;
-  while (filecontent[i] != '\0') {
-    if ((!in_comment && filecontent[i] == '/' && filecontent[i + 1] == '/')) {
-      in_comment = true;
-      i += 2;
-      continue;
-    }else if(!in_comment && filecontent[i] == '/' && filecontent[i + 1] == '*'){
-      inMultiLineComment = true;
-      i += 2;
-      continue;
-    }
-    if (in_comment && filecontent[i] == '\n' && !inMultiLineComment) {
-      in_comment = false;
-    }
-    if(inMultiLineComment && filecontent[i] == '*' && filecontent[i+1] == '/'){
-      i+=2;
-      inMultiLineComment = false;
-    }
-    if (!in_comment && !inMultiLineComment) {
-      putchar(filecontent[i]);
-    }
-    i++;
+  if (nread != (size_t)fsize) {
+    perror("Failed to read file");
+    free(content);
+    return 1;
   }
-}
 
-int get_linecount(FILE *fp) {
-  rewind(fp);
-  int ch, prev_ch = EOF, last_ch = EOF;
-  bool inQuote = false, inChar = false, inComment = false, escaped = false;
+  content[fsize] = '\0';
+
+  int last_non_newline = -1;
   int lines = 0;
-  bool file_empty = true;
-  while ((ch = fgetc(fp)) != EOF) {
-    file_empty = false;
-    if (!inQuote && !inChar && prev_ch == '/' && ch == '/') {
-      inComment = true;
-    }
-    if (ch == '\n') {
-      inComment = false;
-      inChar = false;
-    }
-    if ((inQuote || inChar) && prev_ch == '\\' && !escaped) {
-      escaped = true;
-    } else {
-      escaped = false;
-    }
-    if (ch == '\'' && !inQuote && !inComment && !escaped) {
-      inChar = !inChar;
-    }
-    if (ch == '"' && !inChar && !inComment && !escaped) {
-      inQuote = !inQuote;
-    }
-    if (!inQuote && ch == '\n') {
+  for (int i = 0; content[i]; i++) {
+    if (content[i] == '\n') {
       lines++;
+    } else {
+      last_non_newline = i;
     }
-    prev_ch = ch;
-    last_ch = ch;
   }
 
-  if (!file_empty && last_ch != '\n') {
+  if (last_non_newline >= 0) {
     lines++;
   }
 
-  return lines;
-}
+  int start = argc > 2 ? atoi(argv[2]) : 1;
+  int end = argc > 3 ? atoi(argv[3]) : lines;
 
-char *get_range_content(FILE *fp, int start, int end) {
-  rewind(fp);
-
-  size_t capacity = BUFFER_SIZE;
-  char *buffer = malloc(capacity);
-  if (!buffer) {
-    perror("Memory alloc failed");
-    return NULL;
+  if (start < 1 || end > lines || start > end) {
+    fprintf(stderr, "Invalid range [%d to %d] for file with %d lines\n", start,
+            end, lines);
+    free(content);
+    return 1;
   }
 
-  int ch, prev_ch = EOF;
-  int current_line = 1;
-  size_t buff_idx = 0;
-  bool inQuote = false, inChar = false, inComment = false, escaped = false;
+  int line = 1;
+  size_t range_start = 0, range_end = nread;
+  for(size_t i= 0;i < nread;i++){
+    if (line == start && range_start == 0) {
+      range_start = i;
+    }
+    if (content[i] == '\n') {
+      line++;
+    }
+    if (line > end) {
+      range_end = i;
+      break;
+    }
+    }
 
-  while ((ch = fgetc(fp)) != EOF && current_line <= end) {
-    if (current_line >= start) {
-      if (buff_idx + 1 >= capacity) {
-        capacity *= 2;
-        char *new_buffer = realloc(buffer, capacity);
-        if (!new_buffer) {
-          perror("Realloc failed");
-          free(buffer);
-          return NULL;
-        }
-        buffer = new_buffer;
-      }
-      buffer[buff_idx++] = (char)ch;
-    }
-    if (!inQuote && !inChar && prev_ch == '/' && ch == '/') {
-      inComment = true;
-    }
-    if (ch == '\n') {
-      inComment = false;
-      inChar = false;
-    }
-    if ((inQuote || inChar) && prev_ch == '\\' && !escaped) {
-      escaped = true;
-    } else {
+    content[range_end] = '\0';
+
+    filter_comments(content + range_start);
+
+    return 0;
+}
+
+void filter_comments(const char *content) {
+  bool in_comment = false;
+  bool in_multiline = false;
+  bool in_char = false;
+  bool in_quote = false;
+  bool escaped = false;
+
+  for (size_t i = 0; content[i]; i++) {
+    char c = content[i];
+    if (escaped) {
       escaped = false;
+    } else if (c == '\\') {
+      escaped = true;
+    } else if (c == '"' && !in_char && !in_comment && !in_multiline) {
+      in_quote = !in_quote;
+    } else if (c == '\'' && !in_quote && !in_comment && !in_multiline) {
+      in_char = !in_char;
     }
-    if (ch == '\'' && !inQuote && !inComment && !escaped) {
-      inChar = !inChar;
+
+    if (!in_quote && !in_char && !in_multiline && c == '/' &&
+        content[i + 1] == '/') {
+      in_comment = true;
+      i++;
+      continue;
     }
-    if (ch == '"' && !inChar && !inComment && !escaped) {
-      inQuote = !inQuote;
+    if (!in_quote && !in_char && !in_comment && c == '/' &&
+        content[i + 1] == '*') {
+      in_multiline = true;
+      i++;
+      continue;
     }
-    if (!inQuote && ch == '\n') {
-      current_line++;
+    if (in_comment && c == '\n') {
+      in_comment = false;
     }
-    prev_ch = ch;
+    if (in_multiline && c == '*' && content[i + 1] == '/') {
+      in_multiline = false;
+      i++;
+      continue;
+    }
+    if (!in_comment && !in_multiline) {
+      putchar(c);
+    }
   }
-
-  buffer[buff_idx] = '\0';
-  return buffer;
 }
 
-void printusage(){
-  printf("Usage : remcome <file> start_line end_line\n");
-}
+void printusage() { printf("Usage : remcom <file> start_line end_line\n"); }
