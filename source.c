@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define BUFFER_SIZE 4096
 
 void filter_comments(const char *filecontent);
 void printusage();
@@ -41,17 +40,14 @@ int main(int argc, char **argv) {
 
   content[fsize] = '\0';
 
-  int last_non_newline = -1;
   int lines = 0;
-  for (int i = 0; content[i]; i++) {
+  for (int i = 0;i < nread;i++) {
     if (content[i] == '\n') {
       lines++;
-    } else {
-      last_non_newline = i;
-    }
+    } 
   }
 
-  if (last_non_newline >= 0) {
+  if(nread > 0 && content[nread - 1] != '\n'){
     lines++;
   }
 
@@ -78,7 +74,7 @@ int main(int argc, char **argv) {
       range_end = i;
       break;
     }
-    }
+  }
 
     content[range_end] = '\0';
 
@@ -132,4 +128,6 @@ void filter_comments(const char *content) {
   }
 }
 
-void printusage() { printf("Usage : remcom <file> start_line end_line\n"); }
+void printusage() {
+  printf("Usage : remcom <file> [start_line] [end_line]\n"); 
+  }
