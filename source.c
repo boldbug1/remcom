@@ -7,6 +7,74 @@
 #define BUFFER_SIZE 4096
 
 void filter_comments(const char *filecontent);
+int get_linecount(FILE *fp);
+char *get_range_content(FILE *fp,int start,int end);
+void printusage();
+
+
+int main(int argc,char **argv) { 
+  if(argc < 2 || argc > 4){
+    printusage();
+    return 1;
+  }
+  const char *filename = argv[1];
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+    perror("Error opening file");
+    return -1;
+  }
+  int lines = get_linecount(fp);
+  
+  int start = argc > 2 ? atoi(argv[2]) : 1;
+  int end = argc > 3 ? atoi(argv[3]) : lines;
+  
+  
+  if (start < 1 || end > lines || start > end) {
+    fprintf(stderr, "Invalid range [%d to %d] for file with %d lines\n", start,
+            end, lines);
+            return -1;
+  }
+
+  char *line_content = get_range_content(fp, start, end);
+  if (!line_content) {
+    fprintf(stderr, "No content found\n");
+    fclose(fp);
+    return -1;
+  }
+
+  filter_comments(line_content);
+  free(line_content);
+  fclose(fp);
+  return 0;
+}
+
+void filter_comments(const char *filecontent) {
+  int i = 0;
+  bool in_comment = false;
+  int inMultiLineComment = false;
+  while (filecontent[i] != '\0') {
+    if ((!in_comment && filecontent[i] == '/' && filecontent[i + 1] == '/')) {
+      in_comment = true;
+      i += 2;
+      continue;
+    }else if(!in_comment && filecontent[i] == '/' && filecontent[i + 1] == '*'){
+      inMultiLineComment = true;
+      i += 2;
+      continue;
+    }
+    if (in_comment && filecontent[i] == '\n' && !inMultiLineComment) {
+      in_comment = false;
+    }
+    if(inMultiLineComment && filecontent[i] == '*' && filecontent[i+1] == '/'){
+      i+=2;
+      inMultiLineComment = false;
+    }
+    if (!in_comment && !inMultiLineComment) {
+      putchar(filecontent[i]);
+    }
+    i++;
+  }
+}
 
 int get_linecount(FILE *fp) {
   rewind(fp);
@@ -37,7 +105,6 @@ int get_linecount(FILE *fp) {
     if (!inQuote && ch == '\n') {
       lines++;
     }
-
     prev_ch = ch;
     last_ch = ch;
   }
@@ -78,34 +145,27 @@ char *get_range_content(FILE *fp, int start, int end) {
       }
       buffer[buff_idx++] = (char)ch;
     }
-
     if (!inQuote && !inChar && prev_ch == '/' && ch == '/') {
       inComment = true;
     }
-
     if (ch == '\n') {
       inComment = false;
       inChar = false;
     }
-
     if ((inQuote || inChar) && prev_ch == '\\' && !escaped) {
       escaped = true;
     } else {
       escaped = false;
     }
-
     if (ch == '\'' && !inQuote && !inComment && !escaped) {
       inChar = !inChar;
     }
-
     if (ch == '"' && !inChar && !inComment && !escaped) {
       inQuote = !inQuote;
     }
-
     if (!inQuote && ch == '\n') {
       current_line++;
     }
-
     prev_ch = ch;
   }
 
@@ -113,54 +173,6 @@ char *get_range_content(FILE *fp, int start, int end) {
   return buffer;
 }
 
-int main(void) { // comment
-  // comment
-  const char *filename = "test.c";
-  FILE *fp = fopen(filename, "r");
-  if (!fp) {
-    perror("Error opening file");
-    return -1;
-  }
-  // comment
-  int lines = get_linecount(fp);
-
-  int start = 1;
-  int end = 49;
-
-  if (start < 1 || end > lines || start > end) {
-    fprintf(stderr, "Invalid range [%d to %d] for file with %d lines\n", start,
-            end, lines);
-    return -1;
-  }
-
-  char *line_content = get_range_content(fp, start, end);
-  if (!line_content) {
-    fprintf(stderr, "No content found\n");
-    fclose(fp);
-    return -1;
-  }
-
-  filter_comments(line_content);
-  free(line_content);
-  fclose(fp);
-  return 0;
-}
-
-void filter_comments(const char *filecontent) {
-  int i = 0;
-  bool in_comment = false;
-  while (filecontent[i] != '\0') {
-    if (!in_comment && filecontent[i] == '/' && filecontent[i + 1] == '/') {
-      in_comment = true;
-      i += 2;
-      continue;
-    }
-    if (in_comment && filecontent[i] == '\n') {
-      in_comment = false;
-    }
-    if (!in_comment) {
-      putchar(filecontent[i]);
-    }
-    i++;
-  }
+void printusage(){
+  printf("Usage : remcome <file> start_line end_line\n");
 }

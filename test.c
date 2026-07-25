@@ -31,7 +31,13 @@ void run_test(const char *test_case) {
 
     // Pass target string into sanitizer
     sanitize_text(test_case, result);
-
+/*
+This
+is 
+a multi
+line fstgwgftwsefaws\\\23u123i10i32@@#$%^&*()
+comment
+*/
     // Format output stream
     printf("Original : %s\n", test_case);
     printf("Sanitized: %s\n\n", result);
