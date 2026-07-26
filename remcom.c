@@ -1,25 +1,50 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <getopt.h>
+#define VERSION "1.0.0"
 
 void filter_comments(const char *filecontent,size_t length);
 void printusage();
+
 
 int main(int argc, char **argv) {
   if (argc < 2 || argc > 4) {
     printusage();
     return 1;
   }
+
+  int opt;
+  while((opt = getopt(argc,argv,"+vh")) != -1){
+    switch (opt)
+    {
+    case 'v':
+      printf("Version: %s\n",VERSION);
+      return 0;
+    case 'h':
+      printusage();
+      return 0;
+    default:
+      printusage();
+      return 1;
+    }
+  }
+  
   const char *filename = argv[1];
   FILE *fp = fopen(filename, "r");
   if (!fp) {
     perror("Error opening file");
     return -1;
   }
-
   fseek(fp, 0, SEEK_END);
   long fsize = ftell(fp);
   fseek(fp, 0, SEEK_SET);
+
+  if(fsize < 0){
+    fprintf(stderr,"Error reading file\n");
+    fclose(fp);
+    return 1;
+  }
 
   char *content = malloc(fsize + 1);
   if (!content) {
@@ -62,9 +87,11 @@ int main(int argc, char **argv) {
 
   int line = 1;
   size_t range_start = 0, range_end = nread;
+  bool found_start = false;
   for (size_t i = 0; i < nread; i++) {
-    if (line == start && range_start == 0) {
+    if (line == start && found_start == false) {
       range_start = i;
+      found_start = true;
     }
     if (content[i] == '\n') {
       line++;
@@ -127,4 +154,17 @@ void filter_comments(const char *content, size_t length) {
   }
 }
 
-void printusage() { printf("Usage : remcom <file> [start_line] [end_line]\n"); }
+void printusage() {
+  printf("remcom %s - strip comments from a source file, optionally by line range\n\n", VERSION);
+  printf("Usage:\n");
+  printf("  remcom <file> [start_line] [end_line]\n");
+  printf("  remcom -v            Show version\n");
+  printf("  remcom -h            Show this help message\n\n");
+  printf("Arguments:\n");
+  printf("  file         Path to the source file to process\n");
+  printf("  start_line   First line to include (default: 1)\n");
+  printf("  end_line     Last line to include (default: last line of file)\n\n");
+  printf("Examples:\n");
+  printf("  remcom main.c              Strip comments from the whole file\n");
+  printf("  remcom main.c 10 20        Strip comments from lines 10-20 only\n");
+}
