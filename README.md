@@ -1,4 +1,4 @@
-# remcom
+# remcom `1.0.0`
 
 A lightweight command-line utility to remove comments from C/C++ source files.
 
@@ -9,8 +9,15 @@ A lightweight command-line utility to remove comments from C/C++ source files.
 ## Usage
 
 ```
-remcom <filename> [start_line] [end_line]
+remcom [options] <filename> [start_line] [end_line]
 ```
+
+### Options
+
+| Option | Description      |
+| ------ | ---------------- |
+| `-v`   | Show version     |
+| `-h`   | Show help        |
 
 ### Arguments
 
@@ -22,34 +29,25 @@ remcom <filename> [start_line] [end_line]
 
 ### Examples
 
-Remove comments from the entire file:
+Strip comments from the entire file:
 ```
-remcom test.c
-```
-
-Remove comments from line 10 onward:
-```
-remcom test.c 10
+remcom main.c
 ```
 
-Remove comments from lines 5 to 20:
+Strip comments from lines 10 to 20:
 ```
-remcom test.c 5 20
+remcom main.c 10 20
 ```
 
-Redirect output to a new file:
+Save output to a new file:
 ```
-remcom test.c > cleaned.c
+remcom main.c > cleaned.c
 ```
 
 ## Build
 
-Compile with any C99+ compiler (no external dependencies):
+Requires a C99+ compiler. No external dependencies.
 
 ```
-gcc -Wall -Wextra -Wpedantic source.c -o remcom
+cc -Wall -Wextra -Wpedantic remcom.c -o remcom
 ```
-
-## License
-
-MIT

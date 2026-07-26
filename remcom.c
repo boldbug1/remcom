@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
   FILE *fp = fopen(filename, "r");
   if (!fp) {
     perror("Error opening file");
-    return -1;
+    return 1;
   }
   fseek(fp, 0, SEEK_END);
   long fsize = ftell(fp);
