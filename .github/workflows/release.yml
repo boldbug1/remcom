@@ -1,0 +1,51 @@
+name: Build and Release Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset_name: remcom-linux-x86_64
+          - os: windows-latest
+            asset_name: remcom-windows-x86_64.exe
+          - os: macos-13
+            asset_name: remcom-macos-x86_64
+          - os: macos-latest
+            asset_name: remcom-macos-arm64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSYS2 (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          update: true
+          install: mingw-w64-x86_64-gcc
+
+      - name: Compile (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: cc -O2 -s -o ${{ matrix.asset_name }} remcom.c
+
+      - name: Compile (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2
+        run: gcc -O2 -s -o ${{ matrix.asset_name }} remcom.c
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.asset_name }}
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
