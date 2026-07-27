@@ -9,13 +9,9 @@ void printusage();
 
 
 int main(int argc, char **argv) {
-  if (argc < 2 || argc > 4) {
-    printusage();
-    return 1;
-  }
 
   int opt;
-  while((opt = getopt(argc,argv,"+vh")) != -1){
+  while((opt = getopt(argc,argv,"vh")) != -1){
     switch (opt)
     {
     case 'v':
@@ -25,12 +21,19 @@ int main(int argc, char **argv) {
       printusage();
       return 0;
     default:
-      printusage();
+      fprintf(stderr, "Try 'remcom -h' for help.\n");
       return 1;
     }
   }
+
+  int remaining = argc - optind;
+  if(remaining < 1 || remaining > 3){
+    fprintf(stderr, "Error: expected 1-3 arguments after flags, got %d\n", remaining);
+    fprintf(stderr,"Try 'remcom -h' for help\n");
+    return 1;
+  }
   
-  const char *filename = argv[1];
+  const char *filename = argv[optind];
   FILE *fp = fopen(filename, "r");
   if (!fp) {
     perror("Error opening file");
@@ -75,8 +78,8 @@ int main(int argc, char **argv) {
     lines++;
   }
 
-  int start = argc > 2 ? atoi(argv[2]) : 1;
-  int end = argc > 3 ? atoi(argv[3]) : lines;
+  int start = argc > 2 ? atoi(argv[optind + 1]) : 1;
+  int end = argc > 3 ? atoi(argv[optind + 2]) : lines;
 
   if (start < 1 || end > lines || start > end) {
     fprintf(stderr, "Invalid range [%d to %d] for file with %d lines\n", start,
