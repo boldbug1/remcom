@@ -2,16 +2,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
-#define VERSION "1.0.0"
+#include <string.h>
+#define VERSION "1.1.1"
 
-void filter_comments(const char *filecontent,size_t length);
+typedef struct{
+  char *lang;
+  char *inline_char;
+  char *multiline_start;
+  char *multiline_end;
+}Comment;
+
+void filter_comments(const char *filecontent,size_t length,Comment comment);
 void printusage();
 
 
-int main(int argc, char **argv) {
 
+int main(int argc, char **argv) {
+  Comment comment = {
+    .lang = NULL,
+    .inline_char = "//",
+    .multiline_start = "/*",
+    .multiline_end = "*/"
+  };
   int opt;
-  while((opt = getopt(argc,argv,"vh")) != -1){
+  while((opt = getopt(argc,argv,"vhl:")) != -1){
     switch (opt)
     {
     case 'v':
@@ -20,6 +34,9 @@ int main(int argc, char **argv) {
     case 'h':
       printusage();
       return 0;
+    case 'l':
+      comment.lang = optarg;
+      break;
     default:
       fprintf(stderr, "Try 'remcom -h' for help.\n");
       return 1;
@@ -78,8 +95,8 @@ int main(int argc, char **argv) {
     lines++;
   }
 
-  int start = argc > 2 ? atoi(argv[optind + 1]) : 1;
-  int end = argc > 3 ? atoi(argv[optind + 2]) : lines;
+  int start = remaining > 1? atoi(argv[optind + 1]) : 1;
+  int end = remaining > 2 ? atoi(argv[optind + 2]) : lines;
 
   if (start < 1 || end > lines || start > end) {
     fprintf(stderr, "Invalid range [%d to %d] for file with %d lines\n", start,
@@ -107,23 +124,61 @@ int main(int argc, char **argv) {
 
   content[range_end] = '\0';
 
-  filter_comments(content + range_start, range_end - range_start);
+  //python
+  if (comment.lang != NULL && strcasecmp(comment.lang, "python") == 0) {
+        comment.inline_char = "#";
+        comment.multiline_start = "\"\"\"";
+        comment.multiline_end = "\"\"\"";
+    }
+  filter_comments(content + range_start, range_end - range_start,comment);
   free(content);
   return 0;
 }
 
-void filter_comments(const char *content, size_t length) {
+void filter_comments(const char *content, size_t length,Comment comment) {
   bool in_comment = false;
   bool in_multiline = false;
   bool in_char = false;
   bool in_quote = false;
   bool escaped = false;
 
+  size_t single_len = strlen(comment.inline_char);
+  size_t multi_len_start = strlen(comment.multiline_start);
+  size_t multi_len_end = strlen(comment.multiline_end);
+
   for (size_t i = 0; i < length; i++) {
     char c = content[i];
+    
+    //comment end check
+    if(in_comment && c == '\n'){
+      in_comment = false;
+      putchar(c);
+      continue;
+    }
+    
+    //multiline end check
+    if(in_multiline && (i+multi_len_end <= length) && strncmp(&content[i],comment.multiline_end,multi_len_end) == 0){
+      in_multiline = false;
+      i+=multi_len_end -1;
+      continue;
+    }
+    //inline
+    if(!in_quote && !in_char && !in_comment && !in_multiline && !escaped && (i + single_len <= length) && strncmp(&content[i],comment.inline_char,single_len) == 0){
+      in_comment = true;
+      i+=single_len -1;
+      continue;
+    }
+    
+    //multiline start check
+    if(!in_quote && !in_char && !in_comment && !in_multiline && !escaped && (i+ multi_len_start <= length) && strncmp(&content[i],comment.multiline_start,multi_len_start) == 0){
+      in_multiline = true;
+      i+= multi_len_start - 1;
+      continue;
+    }
+    
     if (escaped) {
       escaped = false;
-    } else if (c == '\\') {
+    } else if (c == '\\' && (in_quote || in_char)) {
       escaped = true;
     } else if (c == '"' && !in_char && !in_comment && !in_multiline) {
       in_quote = !in_quote;
@@ -131,27 +186,7 @@ void filter_comments(const char *content, size_t length) {
       in_char = !in_char;
     }
 
-    if (!in_quote && !in_char && !in_multiline && c == '/' &&
-        content[i + 1] == '/') {
-      in_comment = true;
-      i++;
-      continue;
-    }
-    if (!in_quote && !in_char && !in_comment && c == '/' &&
-        content[i + 1] == '*') {
-      in_multiline = true;
-      i++;
-      continue;
-    }
-    if (in_comment && c == '\n') {
-      in_comment = false;
-    }
-    if (in_multiline && c == '*' && content[i + 1] == '/') {
-      in_multiline = false;
-      i++;
-      continue;
-    }
-    if (!in_comment && !in_multiline) {
+    if(!in_comment && !in_multiline){
       putchar(c);
     }
   }
