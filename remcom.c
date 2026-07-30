@@ -193,16 +193,16 @@ void filter_comments(const char *content, size_t length,Comment comment) {
 }
 
 void printusage() {
-  printf("remcom %s - strip comments from a source file, optionally by line range\n\n", VERSION);
-  printf("Usage:\n");
-  printf("  remcom <file> [start_line] [end_line]\n");
-  printf("  remcom -v            Show version\n");
-  printf("  remcom -h            Show this help message\n\n");
-  printf("Arguments:\n");
-  printf("  file         Path to the source file to process\n");
+  printf("remcom %s - strip comments from a source file\n\n", VERSION);
+  printf("Usage: remcom [-l lang] <file> [start_line] [end_line]\n\n");
+  printf("  -v          Show version\n");
+  printf("  -h          Show this help message\n");
+  printf("  -l <lang>   Comment style (default: C; supports: python)\n\n");
+  printf("  file         Source file to process\n");
   printf("  start_line   First line to include (default: 1)\n");
-  printf("  end_line     Last line to include (default: last line of file)\n\n");
+  printf("  end_line     Last line to include (default: last line)\n\n");
   printf("Examples:\n");
-  printf("  remcom main.c              Strip comments from the whole file\n");
-  printf("  remcom main.c 10 20        Strip comments from lines 10-20 only\n");
+  printf("  remcom main.c                  Strip C-style comments\n");
+  printf("  remcom main.c 10 20            Strip only lines 10-20\n");
+  printf("  remcom -l python script.py     Strip Python-style comments\n");
 }
