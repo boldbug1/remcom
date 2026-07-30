@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <string.h>
-#define VERSION "1.1.1"
+#define VERSION "1.1.0"
 
 typedef struct{
   char *lang;
