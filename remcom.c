@@ -10,10 +10,10 @@ typedef struct{
   char *inline_char;
   char *multiline_start;
   char *multiline_end;
-}Comment;
+}Comment; // comment structure to track inline_char and multiline_char for different langs
 
-void filter_comments(const char *filecontent,size_t length,Comment comment);
-void printusage();
+void filter_comments(const char *filecontent,size_t length,Comment comment); //filters comments out of given string and prints it to stdin
+void printusage(); //prints usage
 
 
 
